@@ -8,8 +8,8 @@ export async function GET() {
     await dbConnect();
 
     const usersToSeed = [
-      { username: 'Pratyush', password: 'password' },
-      { username: 'Shmruti', password: 'password' },
+      { username: 'pratyush', password: 'password' },
+      { username: 'shmruti', password: 'password' },
     ];
 
     for (const u of usersToSeed) {

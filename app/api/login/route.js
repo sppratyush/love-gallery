@@ -8,12 +8,13 @@ export async function POST(req) {
   try {
     await dbConnect();
     const { username, password } = await req.json();
+    const normalizedUsername = username?.toLowerCase();
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
     }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: normalizedUsername });
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
