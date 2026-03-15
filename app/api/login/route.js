@@ -25,7 +25,7 @@ export async function POST(req) {
 
     // Create JWT using jose for Edge compatibility
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const token = await new SignJWT({ userId: user._id, username: user.username })
+    const token = await new SignJWT({ userId: user._id.toString(), username: user.username })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(secret);
@@ -46,6 +46,9 @@ export async function POST(req) {
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    }, { status: 500 });
   }
 }
