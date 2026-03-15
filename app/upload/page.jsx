@@ -14,6 +14,7 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState(0);
   const [error, setError] = useState("");
 
   const handleFileChange = async (e) => {
@@ -92,31 +93,35 @@ export default function UploadPage() {
 
     setLoading(true);
     setError("");
-
-    const formData = new FormData();
-    files.forEach(f => formData.append("file", f));
-    formData.append("caption", caption);
+    setUploadingIndex(0);
 
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      for (let i = 0; i < files.length; i++) {
+        setUploadingIndex(i + 1);
+        const formData = new FormData();
+        formData.append("file", files[i]);
+        formData.append("caption", caption);
 
-      if (res.ok) {
-        setSuccess(true);
-        setFiles([]);
-        setCaption("");
-        setPreviews([]);
-        setTimeout(() => {
-          router.push("/gallery");
-        }, 1500);
-      } else {
-        const data = await res.json();
-        setError(data.error || "Upload failed");
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || `Upload failed for ${files[i].name}`);
+        }
       }
+
+      setSuccess(true);
+      setFiles([]);
+      setCaption("");
+      setPreviews([]);
+      setTimeout(() => {
+        router.push("/gallery");
+      }, 1500);
     } catch (err) {
-      setError("An unexpected error occurred");
+      setError(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -229,7 +234,7 @@ export default function UploadPage() {
             }`}
           >
             {loading ? (
-              <>Uploading memory... <Loader2 className="w-5 h-5 animate-spin" /></>
+              <>Uploading memory {uploadingIndex} of {files.length}... <Loader2 className="w-5 h-5 animate-spin" /></>
             ) : converting ? (
               <>Converting HEIC... <Loader2 className="w-5 h-5 animate-spin" /></>
             ) : success ? (
