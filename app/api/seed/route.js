@@ -13,14 +13,12 @@ export async function GET() {
     ];
 
     for (const u of usersToSeed) {
-      const existingUser = await User.findOne({ username: u.username });
-      if (!existingUser) {
-        const password_hash = await bcrypt.hash(u.password, 10);
-        await User.create({
-          username: u.username,
-          password_hash,
-        });
-      }
+      const password_hash = await bcrypt.hash(u.password, 10);
+      await User.findOneAndUpdate(
+        { username: u.username },
+        { password_hash },
+        { upsert: true, new: true }
+      );
     }
 
     return NextResponse.json({ message: 'Users seeded successfully' }, { status: 200 });

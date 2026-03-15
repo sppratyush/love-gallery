@@ -15,12 +15,18 @@ export async function POST(req) {
 
     const user = await User.findOne({ username });
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Invalid credentials', 
+        details: `User with username "${username}" not found in database.`
+      }, { status: 401 });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Invalid credentials', 
+        details: 'Password comparison failed for existing user.'
+      }, { status: 401 });
     }
 
     // Create JWT using jose for Edge compatibility
