@@ -60,11 +60,10 @@ export async function POST(req) {
     const buffer = Buffer.from(bytes);
 
     // Determine type: 'image' or 'video'
-    // Improved detection to handle more formats
+    // Improved detection to handle more formats like AVC, MKV, etc.
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.3gp', '.avc', '.h264'];
     const isVideo = file.type.startsWith('video') || 
-                  file.name.toLowerCase().endsWith('.mp4') || 
-                  file.name.toLowerCase().endsWith('.mov') || 
-                  file.name.toLowerCase().endsWith('.avi');
+                  videoExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
     const resourceType = isVideo ? 'video' : 'image';
 
     // Upload to Cloudinary

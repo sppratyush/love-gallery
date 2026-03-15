@@ -142,7 +142,7 @@ export default function UploadPage() {
           >
             <input
               type="file"
-              accept="image/*, video/*, .heic, .heif"
+              accept="image/*, video/*, .heic, .heif, .avc, .h264, .mkv, .m4v"
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               disabled={converting}
