@@ -43,43 +43,46 @@ export async function POST(req) {
     }
 
     const formData = await req.formData();
-    const file = formData.get('file');
+    const files = formData.getAll('file');
     const caption = formData.get('caption') || '';
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    if (!files || files.length === 0) {
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
-    // Checking file type limits (500MB)
-    const MAX_SIZE = 500 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File size exceeds 500MB limit' }, { status: 400 });
+    const memories = [];
+
+    for (const file of files) {
+      // Checking file type limits (500MB)
+      const MAX_SIZE = 500 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        return NextResponse.json({ error: `File ${file.name} exceeds 500MB limit` }, { status: 400 });
+      }
+
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Determine type: 'image' or 'video'
+      const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.3gp', '.avc', '.h264'];
+      const isVideo = file.type.startsWith('video') || 
+                    videoExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+      const resourceType = isVideo ? 'video' : 'image';
+
+      // Upload to Cloudinary
+      const result = await uploadToCloudinary(buffer, resourceType);
+
+      // Save to Database
+      await dbConnect();
+      const memory = await Memory.create({
+        file_url: result.secure_url,
+        type: resourceType,
+        caption,
+        uploaded_by: username,
+      });
+      memories.push(memory);
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Determine type: 'image' or 'video'
-    // Improved detection to handle more formats like AVC, MKV, etc.
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.3gp', '.avc', '.h264'];
-    const isVideo = file.type.startsWith('video') || 
-                  videoExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-    const resourceType = isVideo ? 'video' : 'image';
-
-    // Upload to Cloudinary
-    // Using upload_stream which is good for buffers
-    const result = await uploadToCloudinary(buffer, resourceType);
-
-    // Save to Database
-    await dbConnect();
-    const memory = await Memory.create({
-      file_url: result.secure_url,
-      type: resourceType,
-      caption,
-      uploaded_by: username,
-    });
-
-    return NextResponse.json({ success: true, memory }, { status: 201 });
+    return NextResponse.json({ success: true, memories }, { status: 201 });
   } catch (error) {
     console.error('Upload Error:', error);
     return NextResponse.json({ error: 'Upload process failed' }, { status: 500 });

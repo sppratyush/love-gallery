@@ -8,77 +8,85 @@ import Navbar from "@/components/Navbar";
 
 export default function UploadPage() {
   const router = useRouter();
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [caption, setCaption] = useState("");
-  const [preview, setPreview] = useState(null);
+  const [previews, setPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState("");
 
   const handleFileChange = async (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      await processFile(selectedFile);
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length > 0) {
+      await processFiles(selectedFiles);
     }
   };
 
-  const processFile = async (selectedFile) => {
+  const processFiles = async (selectedFiles) => {
     const MAX_SIZE = 500 * 1024 * 1024; // 500MB
-    if (selectedFile.size > MAX_SIZE) {
-      setError("File must be less than 500MB");
-      return;
-    }
-
+    const validFiles = [];
+    const newPreviews = [];
+    
     setError("");
     setSuccess(false);
 
-    // Handle HEIC/HEIF conversion
-    if (selectedFile.name.toLowerCase().endsWith(".heic") || selectedFile.name.toLowerCase().endsWith(".heif")) {
-      try {
-        setConverting(true);
-        const heic2any = (await import("heic2any")).default;
-        const convertedBlob = await heic2any({
-          blob: selectedFile,
-          toType: "image/jpeg",
-          quality: 0.8
-        });
-        
-        // Convert blob to file object
-        const convertedFile = new File(
-          [Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob],
-          selectedFile.name.replace(/\.(heic|heif)$/i, ".jpg"),
-          { type: "image/jpeg" }
-        );
-        
-        setFile(convertedFile);
-        setPreview(URL.createObjectURL(convertedFile));
-      } catch (err) {
-        console.error("HEIC conversion failed:", err);
-        setError("Failed to convert HEIC image. Please try another format.");
-      } finally {
-        setConverting(false);
+    for (const selectedFile of selectedFiles) {
+      if (selectedFile.size > MAX_SIZE) {
+        setError(`File ${selectedFile.name} must be less than 500MB`);
+        continue;
       }
-    } else {
-      setFile(selectedFile);
-      setPreview(URL.createObjectURL(selectedFile));
+
+      // Handle HEIC/HEIF conversion
+      if (selectedFile.name.toLowerCase().endsWith(".heic") || selectedFile.name.toLowerCase().endsWith(".heif")) {
+        try {
+          setConverting(true);
+          const heic2any = (await import("heic2any")).default;
+          const convertedBlob = await heic2any({
+            blob: selectedFile,
+            toType: "image/jpeg",
+            quality: 0.8
+          });
+          
+          const convertedFile = new File(
+            [Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob],
+            selectedFile.name.replace(/\.(heic|heif)$/i, ".jpg"),
+            { type: "image/jpeg" }
+          );
+          
+          validFiles.push(convertedFile);
+          newPreviews.push({ url: URL.createObjectURL(convertedFile), type: "image" });
+        } catch (err) {
+          console.error("HEIC conversion failed:", err);
+          setError(`Failed to convert HEIC image: ${selectedFile.name}`);
+        } finally {
+          setConverting(false);
+        }
+      } else {
+        validFiles.push(selectedFile);
+        const isVideo = selectedFile.type.startsWith("video/");
+        newPreviews.push({ url: URL.createObjectURL(selectedFile), type: isVideo ? "video" : "image" });
+      }
     }
+
+    setFiles(prev => [...prev, ...validFiles]);
+    setPreviews(prev => [...prev, ...newPreviews]);
   };
 
   const handleDragOver = (e) => e.preventDefault();
   
   const handleDrop = async (e) => {
     e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      await processFile(droppedFile);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      await processFiles(droppedFiles);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) {
-      setError("Please select a file to upload");
+    if (files.length === 0) {
+      setError("Please select at least one file to upload");
       return;
     }
 
@@ -86,7 +94,7 @@ export default function UploadPage() {
     setError("");
 
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach(f => formData.append("file", f));
     formData.append("caption", caption);
 
     try {
@@ -97,9 +105,9 @@ export default function UploadPage() {
 
       if (res.ok) {
         setSuccess(true);
-        setFile(null);
+        setFiles([]);
         setCaption("");
-        setPreview(null);
+        setPreviews([]);
         setTimeout(() => {
           router.push("/gallery");
         }, 1500);
@@ -137,7 +145,7 @@ export default function UploadPage() {
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center transition-all ${
-              file ? "border-pink-500/50 bg-pink-500/5" : "border-white/20 bg-black/20 hover:border-white/40 hover:bg-white/5"
+              files.length > 0 ? "border-pink-500/50 bg-pink-500/5" : "border-white/20 bg-black/20 hover:border-white/40 hover:bg-white/5"
             } cursor-pointer relative group`}
           >
             <input
@@ -146,14 +154,37 @@ export default function UploadPage() {
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               disabled={converting}
+              multiple
             />
-            {preview ? (
-              <div className="relative w-full aspect-video md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-black/50 pointer-events-none">
-                {file.type.startsWith("video/") ? (
-                  <video src={preview} className="w-full h-full object-contain" autoPlay muted loop />
-                ) : (
-                  <img src={preview} className="w-full h-full object-contain" alt="Preview" />
-                )}
+            {previews.length > 0 ? (
+              <div className="relative w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4 max-h-[400px] overflow-y-auto z-20 bg-black/40 rounded-xl">
+                {previews.map((prev, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group/preview">
+                    {prev.type === "video" ? (
+                      <video src={prev.url} className="w-full h-full object-cover" muted loop onMouseOver={(e) => e.target.play()} onMouseOut={(e) => e.target.pause()} />
+                    ) : (
+                      <img src={prev.url} className="w-full h-full object-cover" alt={`Preview ${idx}`} />
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFiles(prev => prev.filter((_, i) => i !== idx));
+                        setPreviews(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover/preview:opacity-100 transition-opacity"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-lg hover:border-white/40 hover:bg-white/5 transition-all text-white/40 relative">
+                    <UploadCloud className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] font-bold">Add More</span>
+                </div>
               </div>
             ) : converting ? (
               <div className="flex flex-col items-center justify-center p-10">
@@ -188,11 +219,11 @@ export default function UploadPage() {
 
           <button
             type="submit"
-            disabled={loading || success || !file || converting}
+            disabled={loading || success || files.length === 0 || converting}
             className={`w-full py-4 rounded-xl text-white font-bold tracking-wide transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] flex justify-center items-center gap-2 ${
               loading || converting
                 ? "bg-gradient-to-r from-pink-500 to-rose-400 opacity-70 cursor-not-allowed"
-                : (success || !file)
+                : (success || files.length === 0)
                 ? "bg-white/5 text-rose-200/30 cursor-not-allowed border-white/5"
                 : "bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900"
             }`}
