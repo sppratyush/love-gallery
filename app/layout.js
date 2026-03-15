@@ -6,6 +6,9 @@ const outfit = Outfit({ subsets: ["latin"] });
 export const metadata = {
   title: "Love Gallery ❤️",
   description: "A private place for our memories",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({ children }) {
