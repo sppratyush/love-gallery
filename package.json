@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "bcryptjs": "^2.4.3",
     "cloudinary": "^2.9.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.36.0",

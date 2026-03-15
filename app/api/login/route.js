@@ -8,6 +8,7 @@ export async function POST(req) {
   try {
     await dbConnect();
     const { username, password } = await req.json();
+    console.log(`Login attempt for: ${username}, password length: ${password?.length}`);
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
