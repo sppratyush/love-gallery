@@ -18,15 +18,17 @@ export async function POST(req) {
     if (!user) {
       return NextResponse.json({ 
         error: 'Invalid credentials', 
-        details: `User with username "${username}" not found in database.`
+        details: `User "${username}" not found. (len: ${username?.length})`
       }, { status: 401 });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
+    console.log(`Compare result for ${username}: ${isMatch}. Stored hash len: ${user.password_hash?.length}, hash start: ${user.password_hash?.substring(0, 7)}`);
+
     if (!isMatch) {
       return NextResponse.json({ 
         error: 'Invalid credentials', 
-        details: 'Password comparison failed for existing user.'
+        details: `Password mismatch. Recv pass len: ${password?.length}, Stored hash len: ${user.password_hash?.length}`
       }, { status: 401 });
     }
 

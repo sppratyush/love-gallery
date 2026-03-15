@@ -14,6 +14,7 @@ export async function GET() {
 
     for (const u of usersToSeed) {
       const password_hash = await bcrypt.hash(u.password, 10);
+      console.log(`Seeding user: ${u.username}, pass length: ${u.password.length}, hash length: ${password_hash.length}, hash start: ${password_hash.substring(0, 7)}`);
       await User.findOneAndUpdate(
         { username: u.username },
         { password_hash },
