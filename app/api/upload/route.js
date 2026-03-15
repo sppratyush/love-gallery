@@ -50,19 +50,25 @@ export async function POST(req) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Checking file type limits (50MB)
-    if (file.size > 50 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File size exceeds 50MB limit' }, { status: 400 });
+    // Checking file type limits (500MB)
+    const MAX_SIZE = 500 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'File size exceeds 500MB limit' }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     // Determine type: 'image' or 'video'
-    const isVideo = file.type.startsWith('video');
+    // Improved detection to handle more formats
+    const isVideo = file.type.startsWith('video') || 
+                  file.name.toLowerCase().endsWith('.mp4') || 
+                  file.name.toLowerCase().endsWith('.mov') || 
+                  file.name.toLowerCase().endsWith('.avi');
     const resourceType = isVideo ? 'video' : 'image';
 
     // Upload to Cloudinary
+    // Using upload_stream which is good for buffers
     const result = await uploadToCloudinary(buffer, resourceType);
 
     // Save to Database

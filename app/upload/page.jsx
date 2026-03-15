@@ -13,38 +13,65 @@ export default function UploadPage() {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        setError("File must be less than 50MB");
-        return;
+      await processFile(selectedFile);
+    }
+  };
+
+  const processFile = async (selectedFile) => {
+    const MAX_SIZE = 500 * 1024 * 1024; // 500MB
+    if (selectedFile.size > MAX_SIZE) {
+      setError("File must be less than 500MB");
+      return;
+    }
+
+    setError("");
+    setSuccess(false);
+
+    // Handle HEIC/HEIF conversion
+    if (selectedFile.name.toLowerCase().endsWith(".heic") || selectedFile.name.toLowerCase().endsWith(".heif")) {
+      try {
+        setConverting(true);
+        const heic2any = (await import("heic2any")).default;
+        const convertedBlob = await heic2any({
+          blob: selectedFile,
+          toType: "image/jpeg",
+          quality: 0.8
+        });
+        
+        // Convert blob to file object
+        const convertedFile = new File(
+          [Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob],
+          selectedFile.name.replace(/\.(heic|heif)$/i, ".jpg"),
+          { type: "image/jpeg" }
+        );
+        
+        setFile(convertedFile);
+        setPreview(URL.createObjectURL(convertedFile));
+      } catch (err) {
+        console.error("HEIC conversion failed:", err);
+        setError("Failed to convert HEIC image. Please try another format.");
+      } finally {
+        setConverting(false);
       }
-      setError("");
+    } else {
       setFile(selectedFile);
       setPreview(URL.createObjectURL(selectedFile));
-      setSuccess(false);
     }
   };
 
   const handleDragOver = (e) => e.preventDefault();
   
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && (droppedFile.type.startsWith("image/") || droppedFile.type.startsWith("video/"))) {
-      if (droppedFile.size > 50 * 1024 * 1024) {
-        setError("File must be less than 50MB");
-        return;
-      }
-      setError("");
-      setFile(droppedFile);
-      setPreview(URL.createObjectURL(droppedFile));
-      setSuccess(false);
-    } else {
-      setError("Please drop a valid image or video file.");
+    if (droppedFile) {
+      await processFile(droppedFile);
     }
   };
 
@@ -115,9 +142,10 @@ export default function UploadPage() {
           >
             <input
               type="file"
-              accept="image/jpeg, image/png, image/webp, video/mp4, video/quicktime"
+              accept="image/*, video/*, .heic, .heif"
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              disabled={converting}
             />
             {preview ? (
               <div className="relative w-full aspect-video md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-black/50 pointer-events-none">
@@ -127,15 +155,20 @@ export default function UploadPage() {
                   <img src={preview} className="w-full h-full object-contain" alt="Preview" />
                 )}
               </div>
+            ) : converting ? (
+              <div className="flex flex-col items-center justify-center p-10">
+                <Loader2 className="w-12 h-12 text-pink-500 animate-spin mb-4" />
+                <p className="text-white/60">Converting HEIC image...</p>
+              </div>
             ) : (
               <div className="pointer-events-none text-center transform group-hover:scale-105 transition-all duration-300">
                 <UploadCloud className="w-16 h-16 text-rose-300/40 mx-auto mb-4 group-hover:text-pink-400 group-hover:-translate-y-2 transition-all duration-300 drop-shadow-lg" />
                 <p className="text-rose-100 font-medium text-lg">Drag & drop your memory here</p>
                 <div className="flex items-center justify-center gap-4 mt-4 text-rose-200/50 text-sm border-t border-pink-500/20 pt-4 w-48 mx-auto">
-                  <span>PNG, JPG, MP4</span>
+                  <span>All Images & Videos</span>
                 </div>
                 {/* Visual affordance for constraints */}
-                <p className="text-pink-400/50 text-xs mt-3 tracking-wider font-semibold">Up to 50MB</p>
+                <p className="text-pink-400/50 text-xs mt-3 tracking-wider font-semibold">Up to 500MB</p>
               </div>
             )}
           </div>
@@ -155,9 +188,9 @@ export default function UploadPage() {
 
           <button
             type="submit"
-            disabled={loading || success || !file}
+            disabled={loading || success || !file || converting}
             className={`w-full py-4 rounded-xl text-white font-bold tracking-wide transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] flex justify-center items-center gap-2 ${
-              loading
+              loading || converting
                 ? "bg-gradient-to-r from-pink-500 to-rose-400 opacity-70 cursor-not-allowed"
                 : (success || !file)
                 ? "bg-white/5 text-rose-200/30 cursor-not-allowed border-white/5"
@@ -166,6 +199,8 @@ export default function UploadPage() {
           >
             {loading ? (
               <>Uploading memory... <Loader2 className="w-5 h-5 animate-spin" /></>
+            ) : converting ? (
+              <>Converting HEIC... <Loader2 className="w-5 h-5 animate-spin" /></>
             ) : success ? (
               <>Memory securely saved! <CheckCircle className="w-5 h-5" /></>
             ) : (
