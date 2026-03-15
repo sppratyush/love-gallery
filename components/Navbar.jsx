@@ -4,13 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, PlusCircle, Play, Image as ImageIcon, LogOut, Menu, X } from "lucide-react";
+import { Heart, PlusCircle, Play, Image as ImageIcon, LogOut, Menu, X, Key } from "lucide-react";
 import Cookies from "js-cookie";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -67,8 +69,16 @@ export default function Navbar() {
           })}
           
           <button
+            onClick={() => setChangePasswordOpen(true)}
+            className="ml-4 px-4 py-2 text-sm font-medium text-rose-200/60 hover:text-rose-100 hover:bg-pink-500/10 rounded-full flex items-center gap-2 transition-colors"
+          >
+            <Key className="w-4 h-4" />
+            Change Key
+          </button>
+
+          <button
             onClick={handleLogout}
-            className="ml-4 px-4 py-2 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-full flex items-center gap-2 transition-colors"
+            className="ml-2 px-4 py-2 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-full flex items-center gap-2 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -102,6 +112,14 @@ export default function Navbar() {
             );
           })}
           <button
+            onClick={() => setChangePasswordOpen(true)}
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl text-rose-200/60 hover:text-rose-100 hover:bg-pink-500/10 transition-colors"
+          >
+            <Key className="w-6 h-6" />
+            <span className="text-[10px] font-medium tracking-wide">Key</span>
+          </button>
+
+          <button
             onClick={handleLogout}
             className="flex flex-col items-center gap-1.5 p-2 rounded-xl text-rose-200/60 hover:text-rose-100 hover:bg-pink-500/10 transition-colors"
           >
@@ -110,6 +128,11 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      <ChangePasswordModal 
+        isOpen={changePasswordOpen} 
+        onClose={() => setChangePasswordOpen(false)} 
+      />
     </>
   );
 }
