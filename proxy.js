@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-export async function middleware(request) {
+export async function proxy(request) {
   const token = request.cookies.get('auth_token')?.value;
 
   const protectedPaths = ['/gallery', '/upload', '/favorites', '/slideshow'];

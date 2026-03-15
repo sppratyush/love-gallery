@@ -30,7 +30,8 @@ export default function LoginForm() {
         router.push("/gallery");
         router.refresh();
       } else {
-        setError(data.error || "Login failed");
+        const errorMessage = data.details ? `${data.error}: ${data.details}` : (data.error || "Login failed");
+        setError(errorMessage);
       }
     } catch (err) {
       setError("An unexpected error occurred");
